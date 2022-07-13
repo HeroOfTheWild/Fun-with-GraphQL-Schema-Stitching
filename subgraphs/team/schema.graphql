@@ -1,0 +1,27 @@
+scalar NintendoId
+
+type Query {
+    # Retrieve a Name associated to a Nintendo ID
+    name(id: NintendoId!): Name
+
+    # Retrieve all Teammates associated to a Nintendo ID
+    teammates(id: NintendoId!): [Teammate]
+
+    # Retrieve all Teammates associated to a TeamId
+    team(teamId: String!): [Teammate]
+}
+
+type Name {
+    nintendoId: String!
+    firstName: String
+    middleName: String
+    lastName: String
+}
+
+type Teammate {
+    nintendoId: String!
+    teamId: String!
+    teamName: String
+    managerId: String
+    name: Name
+}

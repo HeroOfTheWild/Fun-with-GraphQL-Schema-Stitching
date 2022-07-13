@@ -1,0 +1,227 @@
+{
+	"info": {
+		"_postman_id": "c73c8524-b285-4ff8-8e93-059af54545a7",
+		"name": "Fun with Schema Stitching",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "21831080"
+	},
+	"item": [
+		{
+			"name": "Queries",
+			"item": [
+				{
+					"name": "Nintendo Information Simple",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query simple($nintendoId: String!){\r\n  employeeDataById(id: $nintendoId) {\r\n    nintendoId\r\n    name { \r\n    \tfirstName\r\n      lastName\r\n    }\r\n    contactInformation {\r\n      address {\r\n        country\r\n        stateProvince\r\n        cityName\r\n        streetAddress\r\n      }\r\n      phone {\r\n      \tcountryCode\r\n        number\r\n      }\r\n      email {\r\n        emailAddress\r\n        purpose\r\n      }\r\n    }\r\n    teammates {\r\n        nintendoId\r\n        name {\r\n            firstName\r\n            lastName\r\n        }\r\n        contactInformation {\r\n            email {\r\n                emailAddress\r\n            }\r\n            phone {\r\n                countryCode\r\n                number\r\n            }\r\n        }\r\n    }\r\n  }\r\n}",
+								"variables": "{\r\n  \"nintendoId\": \"nin0001\"\r\n}"
+							}
+						},
+						"url": {
+							"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"{{context-path}}",
+								"{{endpoint}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Nintendo Employee Information",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query allData($nintendoId: String!, \r\n  $includeName: Boolean!, $includeTeam: Boolean!, $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){\r\n  employeeDataById(id: $nintendoId) {\r\n    nintendoId\r\n    name @include(if: $includeName) {\r\n      firstName\r\n      middleName\r\n      lastName\r\n    }\r\n    teammates @include(if: $includeTeam) {\r\n      teamName\r\n      nintendoId\r\n      name {\r\n        firstName\r\n        middleName\r\n        lastName\r\n      }\r\n      contactInformation {\r\n        address @include(if: $includeAddress) {\r\n          country\r\n          stateProvince\r\n          cityName\r\n          streetAddress\r\n          postalCode\r\n          regionCode\r\n        }\r\n        phone @include(if: $includePhone) {\r\n          countryCode\r\n          number\r\n        }\r\n        email @include(if: $includeEmail) {\r\n          emailAddress\r\n        }\r\n      }\r\n    }\r\n    contactInformation {\r\n      nintendoId\r\n      address @include(if: $includeAddress) {\r\n        id\r\n        country\r\n        stateProvince\r\n        cityName\r\n        streetAddress\r\n        postalCode\r\n        regionCode\r\n        lastModified\r\n      }\r\n      phone @include(if: $includePhone) {\r\n        id\r\n        countryCode\r\n        number\r\n        lastModified\r\n      }\r\n      email @include(if: $includeEmail) {\r\n        id\r\n        emailAddress\r\n        lastModified\r\n      }\r\n      addressHistories(first: 2) { \r\n        edges {\r\n          cursor\r\n          node {\r\n            id\r\n            country\r\n            stateProvince\r\n            cityName\r\n            streetAddress\r\n            postalCode\r\n            regionCode\r\n            lastModified\r\n          }\r\n        }\r\n        pageInfo {\r\n          startCursor\r\n          endCursor\r\n        }\r\n      }\r\n      phoneHistories(first: 2) @include(if: $includePhone) {\r\n        edges {\r\n          cursor\r\n          node {\r\n            id\r\n            countryCode\r\n            number\r\n            lastModified\r\n          }\r\n        }\r\n      }\r\n      emailHistories(first: 2) {\r\n        edges {\r\n          cursor\r\n          node {\r\n            id\r\n            emailAddress\r\n            lastModified\r\n          }\r\n        }\r\n        pageInfo {\r\n          startCursor\r\n          endCursor\r\n        }\r\n      }\r\n    }\r\n  }\r\n}",
+								"variables": "{\r\n  \"nintendoId\": \"nin0001\",\r\n  \"includeName\": true,\r\n  \"includeTeam\": true,\r\n  \"includeAddress\": true,\r\n  \"includePhone\": true,\r\n  \"includeEmail\": true\r\n}"
+							}
+						},
+						"url": {
+							"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"{{context-path}}",
+								"{{endpoint}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Nintendo Employee Team Details",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query allData($nintendoId: String!, \r\n  $includeName: Boolean!, $includeTeam: Boolean!){\r\n  employeeDataById(id: $nintendoId) {\r\n    nintendoId\r\n    name @include(if: $includeName) {\r\n      firstName\r\n      middleName\r\n      lastName\r\n    }\r\n    teammates @include(if: $includeTeam) {\r\n      teamName\r\n      nintendoId\r\n      name {\r\n        firstName\r\n        middleName\r\n        lastName\r\n      }\r\n    }\r\n  }\r\n}",
+								"variables": "{\r\n  \"nintendoId\": \"nin0001\",\r\n  \"includeName\": true,\r\n  \"includeTeam\": true\r\n}"
+							}
+						},
+						"url": {
+							"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"{{context-path}}",
+								"{{endpoint}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Nintendo Employee Contact Details",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query allData($nintendoId: String!, $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){\r\n  employeeDataById(id: $nintendoId) {\r\n    nintendoId\r\n    contactInformation {\r\n      nintendoId\r\n      address @include(if: $includeAddress) {\r\n        id\r\n        country\r\n        stateProvince\r\n        cityName\r\n        streetAddress\r\n        postalCode\r\n        regionCode\r\n        lastModified\r\n      }\r\n      phone @include(if: $includePhone) {\r\n        id\r\n        countryCode\r\n        number\r\n        lastModified\r\n      }\r\n      email @include(if: $includeEmail) {\r\n        id\r\n        emailAddress\r\n        lastModified\r\n      }\r\n    }\r\n  }\r\n}",
+								"variables": "{\r\n  \"nintendoId\": \"nin0002\",\r\n  \"includeAddress\": true,\r\n  \"includePhone\": true,\r\n  \"includeEmail\": true\r\n}"
+							}
+						},
+						"url": {
+							"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"{{context-path}}",
+								"{{endpoint}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Nintendo Employee Contact History Details",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query allData($nintendoId: String!, $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){\r\n  employeeDataById(id: $nintendoId) {\r\n    nintendoId\r\n    contactInformation {\r\n      nintendoId\r\n      addressHistories(first: 2) @include(if: $includeAddress) {\r\n        edges {\r\n          cursor\r\n          node {\r\n            id\r\n            country\r\n            stateProvince\r\n            cityName\r\n            streetAddress\r\n            postalCode\r\n            regionCode\r\n            lastModified\r\n          }\r\n        }\r\n        pageInfo {\r\n          startCursor\r\n          endCursor\r\n        }\r\n      }\r\n      phoneHistories(first: 2) @include(if: $includePhone) {\r\n        edges {\r\n          cursor\r\n          node {\r\n            id\r\n            countryCode\r\n            number\r\n            lastModified\r\n          }\r\n        }\r\n      }\r\n      emailHistories(first: 2) @include(if: $includeEmail) {\r\n        edges {\r\n          cursor\r\n          node {\r\n            id\r\n            emailAddress\r\n            lastModified\r\n          }\r\n        }\r\n        pageInfo {\r\n          startCursor\r\n          endCursor\r\n        }\r\n      }\r\n    }\r\n  }\r\n}",
+								"variables": "{\r\n  \"nintendoId\": \"nin0001\",\r\n  \"includeAddress\": true,\r\n  \"includePhone\": true,\r\n  \"includeEmail\": true\r\n}"
+							}
+						},
+						"url": {
+							"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+							"host": [
+								"{{domain}}"
+							],
+							"path": [
+								"{{context-path}}",
+								"{{endpoint}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Introspection of Queries on Gateway Schema",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "{\r\n    __schema {\r\n        queryType {\r\n            name\r\n            kind\r\n            fields {\r\n                name\r\n                description\r\n                args {\r\n                    name\r\n                }\r\n                type {\r\n                    name\r\n                }\r\n            }\r\n        }\r\n    }\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+					"host": [
+						"{{domain}}"
+					],
+					"path": [
+						"{{context-path}}",
+						"{{endpoint}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Introspection of Types on Gateway Schema",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "{\r\n    __schema {\r\n        types {\r\n            name\r\n            fields {\r\n                name\r\n                type {\r\n                  fields {\r\n                    name\r\n                  }\r\n                    name\r\n                }\r\n            }\r\n        }\r\n    }\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{domain}}/{{context-path}}/{{endpoint}}",
+					"host": [
+						"{{domain}}"
+					],
+					"path": [
+						"{{context-path}}",
+						"{{endpoint}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "domain",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "context-path",
+			"value": "nintendo",
+			"type": "string"
+		},
+		{
+			"key": "endpoint",
+			"value": "graphql",
+			"type": "string"
+		}
+	]
+}

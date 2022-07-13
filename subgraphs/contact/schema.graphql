@@ -1,0 +1,79 @@
+scalar NintendoId
+scalar Date
+scalar DateTime
+
+type Query {
+    # Retrieve all addresses associated to a Nintendo ID
+    addresses(id: NintendoId!): [Address]
+    # Retrieve a Collection of Address History entries associated to a Nintendo ID that you can paginate through
+    addressHistories(id: NintendoId!, rows: Int!, before: String): addressHistoryConnection @connection (for: "Address")
+
+    # Retrieve all phones associated to a Nintendo ID
+    phones(id: NintendoId!): [Phone]
+    # Retrieve a Collection of Phone History entries associated to a Nintendo ID that you can paginate through
+    phoneHistories(id: NintendoId!, rows: Int!, before: String): phoneHistoryConnection @connection (for: "Phone")
+    
+    # Retrieve all emails associated to a Nintendo ID
+    emails(id: NintendoId!): [Email]
+    # Retrieve a Collection of Email History entries associated to a Nintendo ID that you can paginate through
+    emailHistories(id: NintendoId!, rows: Int!, before: String): emailHistoryConnection @connection (for: "Email")
+}
+
+
+type Address implements Contact {
+    id: String!
+    nintendoId: String!
+    purpose: AddressPurpose
+    country: String
+    stateProvince: String
+    cityName: String 
+    streetAddress: String
+    postalCode: String
+    regionCode: String
+    startDate: Date
+    endDate: Date
+    lastModified: DateTime
+}
+
+
+type Email implements Contact {
+    id: String!
+    nintendoId: String!
+    purpose: ContactPurpose
+    emailAddress: String
+    lastModified: DateTime
+}
+
+type Phone implements Contact {
+    id: String!
+    nintendoId: String!
+    countryCode: String
+    type: PhoneType
+    purpose: ContactPurpose
+    number: String
+    lastModified: DateTime
+}
+
+enum PhoneType {
+    MOBILE
+    HOME
+    FAX
+}
+
+enum ContactPurpose {
+    WORK
+    PERSONAL
+    BOTH
+}
+
+enum AddressPurpose {
+    RESIDENTIAL
+    MAILING
+    BOTH
+}
+
+interface Contact {
+    id: String!
+    nintendoId: String!
+    lastModified: DateTime
+}
