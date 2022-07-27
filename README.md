@@ -27,6 +27,9 @@ I'll continue to add more to this project as I learn more about schema stitching
 - _Nintendo Contact subservice_: 
     - Can be found [here](https://github.com/HeroOfTheWild/nintendo-contact-graphql-api)
     - will be running on `http://localhost:8082/nintendo/contact/graphql`
+- _Nintendo Project subservice_: 
+    - Can be found [here](https://github.com/HeroOfTheWild/nintendo-project-graphql-api)
+    - will be running on `http://localhost:8083/nintendo/project/graphql`
 
 
 ## Setup and Running
@@ -43,11 +46,12 @@ Visit the GraphIQL interface for the [stitched gateway](http://localhost:8080/ni
 
 Checkout the attached Postman Collection for more examples. Below is an example for querying all Nintendo Employee Details. 
 
-GraphQL Query
+ GraphQL Query
 ```graphql
-query allData($nintendoId: String!, 
-  $includeName: Boolean!, $includeTeam: Boolean!, $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){
-  employeeDataById(id: $nintendoId) {
+query allData($nintendoId: NintendoId!, 
+  $includeName: Boolean!, $includeTeam: Boolean!, $includeProjects: Boolean!, 
+  $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){
+  employeeData(id: $nintendoId) {
     nintendoId
     name @include(if: $includeName) {
       firstName
@@ -56,28 +60,32 @@ query allData($nintendoId: String!,
     }
     teammates @include(if: $includeTeam) {
       teamName
+      teamId
       nintendoId
-      name {
-        firstName
-        middleName
-        lastName
+      details {
+        name {
+          firstName
+          lastName
+        }
+        contactInformation {
+          email {
+            emailAddress
+          }
+          phone {
+            number
+          }
+          address {
+            streetAddress
+          }
+        }
       }
-      contactInformation {
-        address @include(if: $includeAddress) {
-          country
-          stateProvince
-          cityName
-          streetAddress
-          postalCode
-          regionCode
-        }
-        phone @include(if: $includePhone) {
-          countryCode
-          number
-        }
-        email @include(if: $includeEmail) {
-          emailAddress
-        }
+    }
+    projects @include(if: $includeProjects) {
+      projectName
+      status
+      franchiseId
+      franchise {
+        title
       }
     }
     contactInformation {
@@ -103,7 +111,7 @@ query allData($nintendoId: String!,
         emailAddress
         lastModified
       }
-      addressHistories(first: 2) { 
+      addressHistories(first: 2) @include(if: $includeAddress) {
         edges {
           cursor
           node {
@@ -133,7 +141,7 @@ query allData($nintendoId: String!,
           }
         }
       }
-      emailHistories(first: 2) {
+      emailHistories(first: 2) @include(if: $includeEmail) {
         edges {
           cursor
           node {
@@ -160,10 +168,12 @@ Variables
   "includeTeam": true,
   "includeAddress": true,
   "includePhone": true,
-  "includeEmail": true
+  "includeEmail": true,
+  "includeProjects": true
 }
 ```
 
 The results of this query are retrieved from the underlying subschemas by the stitched gateway. 
 - `name` and `teammates` come from the remote Nintendo Team server. 
-- `address`, `phone`, and `email` come from the remote Nintendo Contact server. 
+- `address`, `phone`, and `email` come from the remote Nintendo Contact server.
+- `project` and `franchises` come from the remote Nintendo Project server.
