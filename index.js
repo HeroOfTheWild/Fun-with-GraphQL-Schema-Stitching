@@ -1,54 +1,85 @@
-const express = require('express');
+const express     = require('express');
+const depthLimit  = require('graphql-depth-limit');
 
-const { graphqlHTTP } = require('express-graphql');
+const { graphqlHTTP }   = require('express-graphql');
 const { stitchSchemas } = require('@graphql-tools/stitch');
 const { delegateToSchema } = require('@graphql-tools/delegate')
 const { introspectSchema } = require('@graphql-tools/wrap');
+const { fetch } = require('cross-fetch');
+const { print } = require('graphql');
 
-const makeRemoteExecutor = require('./services/make_remote_executor');
-const individualSchema = require('./subgraphs/team/schema');
+const NotFound = require('./services/not_found');
+
+const teamSchema          = require('./subgraphs/team/schema');
+const makeRemoteExecutor  = require('./services/make_remote_executor');
 
 async function makeGatewaySchema() {
   // Make remote executors:
   //  These are simple functions that query a remote GraphQL API for JSON.
-  const individualExec = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
+  const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
   const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
+  const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
 
   // We are pulling in the schemas locally and using the executor to call the API to retrieve the requested data
-  const subSchemaIndividual = { 
-    schema: individualSchema, 
-    executor: individualExec
+  const subSchemaTeam = { 
+    schema: teamSchema, 
+    executor: teamExec
   }
+
   // Here we are pulling the schema remotely using introspection and using the executor to call the API to retrieve the requested data
   const subSchemaContact = { 
     schema: await introspectSchema(contactExec), 
     executor: contactExec
   }
 
+  // Here we are pulling the schema remotely using introspection and using the executor to call the API to retrieve the requested data
+  const subSchemaProject = { 
+    schema: await introspectSchema(projectExec), 
+    executor: projectExec
+  }
+
+  // GraphQL Query to retrieve the Team Details associated to a NintendoId
+  const myTeamInfoQuery = `
+      query primary($nintendoId: NintendoId!) {
+        primaryTeam(nintendoId: $nintendoId) {
+            nintendoId
+            teamId
+            teamName
+            managerId
+        }
+      }
+  `
 
   // Under the hood, `stitchSchemas` is a wrapper for `makeExecutableSchema`,
   // and accepts all of its same options. This allows extra type definitions
   // and resolvers to be added directly into the top-level gateway proxy schema.
   return stitchSchemas({
     // Adding our subSchemas
-    subschemas: [subSchemaIndividual, subSchemaContact],
+    subschemas: [subSchemaTeam, subSchemaContact, subSchemaProject],
     typeDefs: 
     `
       type Query {
         # Retrieve all employee information associated to a NintendoID
-        employeeDataById(id: String!): NintendoEmployee
+        employeeData(id: NintendoId!): NintendoEmployee
       }
 
       type NintendoEmployee {
         nintendoId: String!
+        teamId: String!
         name: Name
-        teammates: [Teammate]
+        projects(franchiseId: String, status: ProjectStatus): [Project]
         contactInformation: ContactInformation
+        teammates: [Teammate]
       }
 
       # Extending the Teammate type to allow look ups information for a member
       extend type Teammate {
-        contactInformation: ContactInformation
+        details: NintendoEmployee
+      }
+
+      # Extending the Project type to bring in the Franchise Information
+      extend type Project {
+        franchise: Franchise
       }
 
       type ContactInformation {
@@ -65,9 +96,30 @@ async function makeGatewaySchema() {
     resolvers: {
       // Resolving the employeeDataById Query
       Query: {
-        employeeDataById(obj, args, context, info) {
-          const nintendoEmployee = {nintendoId: args.id}
-          return nintendoEmployee
+        employeeData(obj, args, context, info) {
+          const query = typeof myTeamInfoQuery === 'string' ? myTeamInfoQuery : print(myTeamInfoQuery);
+          const ninId = args.id
+          return fetch('http://localhost:8081/nintendo/team/graphql', {
+            method: 'POST',
+            body: JSON.stringify({ 
+              query, 
+              variables: { nintendoId: ninId } 
+            }),
+          }).then((response) => response.json()).then(result => {
+            const info = result.data.primaryTeam
+            if (null === info) {
+              throw new NotFound("No record found with this ID: " + ninId);
+            }
+
+            return  {
+                      nintendoId: info.nintendoId, 
+                      teamId: info.teamId,
+                      teamName: info.teamName,
+                      managerId: info.managerId
+                    }
+          }).catch((err) => {
+            throw err;
+          })
         } 
       },
       // Resolving the NintendoEmployee object
@@ -75,15 +127,28 @@ async function makeGatewaySchema() {
         name: {
           selectionSet: `{ id }`, 
           resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaIndividual, operation: 'query', fieldName: 'name', args: { id: nintendoEmployee.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'name', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
           }
         },
         teammates: {
           selectionSet: `{ id }`, 
           resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaIndividual, operation: 'query', fieldName: 'teammates', args: { id: nintendoEmployee.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'teammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
           }
         },
+        projects : {
+          selectionSet: `{ id }`, 
+          resolve(nintendoEmployee, args, context, info) {
+            return delegateToSchema({
+              schema: subSchemaProject, operation: 'query', fieldName: 'projectsByCriteria', 
+              args: { 
+                teamId: nintendoEmployee.teamId,
+                franchiseId: args.franchiseId,
+                status: args.status
+              }, context, info})
+          }
+        },
+        // Setting up the Contact Information with the NintendoId
         contactInformation: {
           selectionSet: `{ id }`, 
           resolve(nintendoEmployee, args, context, info) {
@@ -91,16 +156,25 @@ async function makeGatewaySchema() {
           }
         }
       }, 
-      // Resolving the Teammate object
+      // Resolving the Teammate object 
       Teammate: {
-        contactInformation: {
+        details: {
           selectionSet: `{ id }`, 
           resolve(teammate, args, context, info) {
-            return {nintendoId: teammate.nintendoId}
+            return {nintendoId: teammate.nintendoId, teamId: teammate.teamId}
           }
         }
       },
-      // Resolving the ContactInformation object that is used by both Teammate and NintendoEmployee
+      // Resolving the Project object 
+      Project: {
+        franchise: {
+          selectionSet: `{ id }`, 
+          resolve(project, args, context, info) {
+            return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info})
+          }
+        }
+      },
+      // Resolving the ContactInformation object
       ContactInformation: {
         address: {
           selectionSet: `{ id }`, 
@@ -166,6 +240,13 @@ async function makeGatewaySchema() {
 
 makeGatewaySchema().then(schema => {
   const app = express();
-  app.use('/nintendo/graphql', graphqlHTTP({ schema, graphiql: true }));
+  app.use('/nintendo/graphql', graphqlHTTP({ 
+    schema, 
+    graphiql: true,
+    // Since NintendoEmployee has a Teammate field and we extended Teammate to have a NintendoEmployee field
+    // it is really easy for a malicious actor to take advantage of this feature by sending a chained Malicious Query and overwhelm/crash our API
+    // To prevent this, we can add a depthLimit
+    validationRules: [ depthLimit(5) ]
+  }));
   app.listen(8080, () => console.log('gateway running at http://localhost:8080/nintendo/graphql'));
 });
