@@ -15,7 +15,7 @@ const makeRemoteExecutor  = require('./services/make_remote_executor');
 
 async function makeGatewaySchema() {
   // Make remote executors:
-  //  These are simple functions that query a remote GraphQL API for JSON.
+  //  These are simple functions that query a remote GraphQL API.
   const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
   const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
   const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
