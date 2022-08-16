@@ -1,21 +1,19 @@
 const express     = require('express');
 const depthLimit  = require('graphql-depth-limit');
 
-const { graphqlHTTP }   = require('express-graphql');
-const { stitchSchemas } = require('@graphql-tools/stitch');
-const { delegateToSchema } = require('@graphql-tools/delegate')
-const { introspectSchema } = require('@graphql-tools/wrap');
-const { fetch } = require('cross-fetch');
-const { print } = require('graphql');
+const { graphqlHTTP }       = require('express-graphql');
+const { stitchSchemas }     = require('@graphql-tools/stitch');
+const { delegateToSchema }  = require('@graphql-tools/delegate')
+const { introspectSchema }  = require('@graphql-tools/wrap');
 
-const NotFound = require('./services/not_found');
-
+const retrieveTeamInfo    = require('./services/retrieve_team_id');
 const teamSchema          = require('./subgraphs/team/schema');
 const makeRemoteExecutor  = require('./services/make_remote_executor');
+const gatewaySchema       = require('./gateway_schema');
 
 async function makeGatewaySchema() {
   // Make remote executors:
-  //  These are simple functions that query a remote GraphQL API.
+  //  These are simple functions that query a remote GraphQL API for JSON.
   const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
   const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
   const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
@@ -38,88 +36,20 @@ async function makeGatewaySchema() {
     executor: projectExec
   }
 
-  // GraphQL Query to retrieve the Team Details associated to a NintendoId
-  const myTeamInfoQuery = `
-      query primary($nintendoId: NintendoId!) {
-        primaryTeam(nintendoId: $nintendoId) {
-            nintendoId
-            teamId
-            teamName
-            managerId
-        }
-      }
-  `
-
   // Under the hood, `stitchSchemas` is a wrapper for `makeExecutableSchema`,
   // and accepts all of its same options. This allows extra type definitions
   // and resolvers to be added directly into the top-level gateway proxy schema.
   return stitchSchemas({
     // Adding our subSchemas
     subschemas: [subSchemaTeam, subSchemaContact, subSchemaProject],
-    typeDefs: 
-    `
-      type Query {
-        # Retrieve all employee information associated to a NintendoID
-        employeeData(id: NintendoId!): NintendoEmployee
-      }
-
-      type NintendoEmployee {
-        nintendoId: String!
-        teamId: String!
-        name: Name
-        projects(franchiseId: String, status: ProjectStatus): [Project]
-        contactInformation: ContactInformation
-        teammates: [Teammate]
-      }
-
-      # Extending the Teammate type to allow look ups information for a member
-      extend type Teammate {
-        details: NintendoEmployee
-      }
-
-      # Extending the Project type to bring in the Franchise Information
-      extend type Project {
-        franchise: Franchise
-      }
-
-      type ContactInformation {
-        nintendoId: String!
-        address: [Address]
-        addressHistories(first: Int!, before: String): addressHistoryConnection
-        phone: [Phone]
-        phoneHistories(first: Int!, before: String): phoneHistoryConnection
-        email: [Email]
-        emailHistories(first: Int!, before: String): emailHistoryConnection
-      }
-    `
+    // Defining extra types and queries on the Gateway Schema
+    typeDefs: gatewaySchema
     ,
     resolvers: {
-      // Resolving the employeeDataById Query
+      // Resolving the employeeData Query
       Query: {
         employeeData(obj, args, context, info) {
-          const query = typeof myTeamInfoQuery === 'string' ? myTeamInfoQuery : print(myTeamInfoQuery);
-          const ninId = args.id
-          return fetch('http://localhost:8081/nintendo/team/graphql', {
-            method: 'POST',
-            body: JSON.stringify({ 
-              query, 
-              variables: { nintendoId: ninId } 
-            }),
-          }).then((response) => response.json()).then(result => {
-            const info = result.data.primaryTeam
-            if (null === info) {
-              throw new NotFound("No record found with this ID: " + ninId);
-            }
-
-            return  {
-                      nintendoId: info.nintendoId, 
-                      teamId: info.teamId,
-                      teamName: info.teamName,
-                      managerId: info.managerId
-                    }
-          }).catch((err) => {
-            throw err;
-          })
+          return retrieveTeamInfo(args.id);
         } 
       },
       // Resolving the NintendoEmployee object
