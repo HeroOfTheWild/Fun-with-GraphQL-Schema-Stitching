@@ -2,8 +2,6 @@ const { makeExecutableSchema } = require('@graphql-tools/schema');
 const readFileSync = require('../../services/read_file_sync');
 const schema = readFileSync(__dirname, 'schema.graphql');
 
-// WIP. Need to add DateTime Definition and Resolver to schema
-//const {DateTimeTypeDefinition, DateTimeResolver} = require('graphql-scalars')
 const { GraphQLScalarType, GraphQLError, Kind } = require('graphql');
 
 const NINTENDO_ID_REGEX = /nin[0-9]{4}/;
