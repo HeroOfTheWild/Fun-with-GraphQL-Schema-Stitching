@@ -168,7 +168,7 @@ async function makeGatewaySchema() {
       },
       // Resolving the ContactInformation object
       ContactInformation: {
-        address: {
+        addresses: {
           selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info})
@@ -187,7 +187,7 @@ async function makeGatewaySchema() {
               context, info})
           }
         },
-        phone: {
+        phones: {
           selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info})
@@ -206,7 +206,7 @@ async function makeGatewaySchema() {
               context, info})
           }
         }, 
-        email: {
+        emails: {
           selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info})

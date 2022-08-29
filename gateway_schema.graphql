@@ -10,9 +10,9 @@
 
     input NewNintendoEmployeeInput {
         teammate: TeammateInput!
-        address: AddressInput
-        phone: PhoneInput
-        email: EmailInput
+        address: AddressInput!
+        phone: PhoneInput!
+        email: EmailInput!
     }
 
     type NewNintendoEmployee {
@@ -55,10 +55,10 @@
 
     type ContactInformation {
         nintendoId: String!
-        address: [Address]
+        addresses: [Address]
         addressHistories(first: Int!, before: String): addressHistoryConnection
-        phone: [Phone]
+        phones: [Phone]
         phoneHistories(first: Int!, before: String): phoneHistoryConnection
-        email: [Email]
+        emails: [Email]
         emailHistories(first: Int!, before: String): emailHistoryConnection
     }
