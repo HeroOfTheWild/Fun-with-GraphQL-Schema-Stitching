@@ -1,17 +1,17 @@
-const express     = require('express');
-const depthLimit  = require('graphql-depth-limit');
+const express               = require('express');
+const depthLimit            = require('graphql-depth-limit');
 
 const { graphqlHTTP }       = require('express-graphql');
 const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 const { introspectSchema }  = require('@graphql-tools/wrap');
-const { Kind } = require('graphql');
 
-const { retrieveTeamInfo, issueNewTeammate }     = require('./services/team_service');
-const { addressCollectionSet, phoneCollectionSet, emailCollectionSet } = require('./services/contact_selection_set');
-const teamSchema          = require('./subgraphs/team/schema');
-const makeRemoteExecutor  = require('./services/make_remote_executor');
-const gatewaySchema       = require('./gateway_schema');
+const { retrieveTeamInfo }  = require('./services/team_service');
+const newEmployee           = require('./resolvers/new_employee_resolver');
+
+const teamSchema            = require('./subgraphs/team/schema');
+const makeRemoteExecutor    = require('./services/make_remote_executor');
+const gatewaySchema         = require('./gateway_schema');
 
 async function makeGatewaySchema() {
   // Make remote executors:
@@ -52,59 +52,12 @@ async function makeGatewaySchema() {
       Query: {
         employeeData(obj, args, context, info) {
           return retrieveTeamInfo(args.id);
-        } 
+        }
       },
       // Resolving the newEmployee Query
       Mutation: {
         newEmployee(obj, args, context, info) {
-          const newTeammate = issueNewTeammate(args.nintendoEmployee.teammate);
-
-          return newTeammate.then((newEmployeeWoohoo) => {
-            const newNintendoId = newEmployeeWoohoo.nintendoId;
-            const teamId = newEmployeeWoohoo.teamId;
-            const name = newEmployeeWoohoo.name;
-            const teamInfo = newEmployeeWoohoo.teamInfo;
-
-            var phoneArgument = args.nintendoEmployee.phone;
-            phoneArgument.nintendoId = newNintendoId;
-
-            const newPhone = delegateToSchema({
-              schema: subSchemaContact, operation: 'mutation', fieldName: 'issuePhone', 
-              args: { phone: phoneArgument }, context, info,
-              returnType: info.schema.getMutationType().toConfig().fields['issuePhone'].type,
-              selectionSet: phoneCollectionSet
-            });
-  
-            var emailArgument = args.nintendoEmployee.email;
-            emailArgument.nintendoId = newNintendoId;
-
-            const newEmail = delegateToSchema({
-              schema: subSchemaContact, operation: 'mutation', fieldName: 'issueEmail', 
-              args: { email: emailArgument }, context, info,
-              returnType: info.schema.getMutationType().toConfig().fields['issueEmail'].type,
-              selectionSet: emailCollectionSet
-            });
-  
-            var addressArgument = args.nintendoEmployee.address;
-            addressArgument.nintendoId = newNintendoId;
-
-            const newAddress = delegateToSchema({
-              schema: subSchemaContact, operation: 'mutation', fieldName: 'issueAddress', 
-              args: { address: addressArgument }, context, info,
-              returnType: info.schema.getMutationType().toConfig().fields['issueAddress'].type,
-              selectionSet: addressCollectionSet
-            });
-
-            return {
-              nintendoId: newNintendoId, 
-              teamId: teamId, 
-              teamInfo: teamInfo,
-              name: name,
-              address: newAddress,
-              phone: newPhone,
-              email: newEmail
-            }
-          })
+          return newEmployee(subSchemaContact, obj, args, context, info);
         },
         newEmployeeV2(obj, args, context, info) {
           return null;
@@ -125,7 +78,12 @@ async function makeGatewaySchema() {
             }
             return teamInfo            
           }
-        } , 
+        },
+        contactInformation: {
+          resolve(nintendoEmployee, args, context, info) {
+            return {nintendoId: nintendoEmployee.nintendoId}
+          }
+        },
         teammates: {
           resolve(nintendoEmployee, args, context, info) {
             return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myTeammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
@@ -139,13 +97,7 @@ async function makeGatewaySchema() {
                 teamId: nintendoEmployee.teamId,
                 franchiseId: args.franchiseId,
                 status: args.status
-              }, context, info})
-          }
-        },
-        // Setting up the Contact Information with the NintendoId
-        contactInformation: {
-          resolve(nintendoEmployee, args, context, info) {
-            return {nintendoId: nintendoEmployee.nintendoId}
+              }, context, info});
           }
         }
       }, 
@@ -162,7 +114,7 @@ async function makeGatewaySchema() {
         franchise: {
           selectionSet: `{ id }`, 
           resolve(project, args, context, info) {
-            return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info})
+            return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
           }
         }
       },
@@ -171,7 +123,7 @@ async function makeGatewaySchema() {
         addresses: {
           selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         },
         addressHistories: {
@@ -183,14 +135,13 @@ async function makeGatewaySchema() {
                 nintendoId: contactInformation.nintendoId, 
                 rows: args.first,
                 before: args.before
-              }, 
-              context, info})
+              }, context, info});
           }
         },
         phones: {
           selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         }, 
         phoneHistories: {
@@ -202,14 +153,13 @@ async function makeGatewaySchema() {
                 nintendoId: contactInformation.nintendoId, 
                 rows: args.first,
                 before: args.before
-              }, 
-              context, info})
+              }, context, info});
           }
         }, 
         emails: {
           selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         },
         emailHistories: {
@@ -221,8 +171,7 @@ async function makeGatewaySchema() {
                 nintendoId: contactInformation.nintendoId, 
                 rows: args.first,
                 before: args.before
-              }, 
-              context, info})
+              }, context, info});
           }
         }
       }

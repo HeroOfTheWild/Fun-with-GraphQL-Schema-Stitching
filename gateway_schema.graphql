@@ -38,9 +38,9 @@
         teamId: String!
         teamInfo: Team
         name: Name
-        projects(franchiseId: String, status: ProjectStatus): [Project]
         contactInformation: ContactInformation
         teammates: [Teammate]
+        projects(franchiseId: String, status: ProjectStatus): [Project]
     }
 
     # Extending the Teammate type to allow look ups information for a teammate
