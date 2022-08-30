@@ -4,8 +4,8 @@
     }
 
     type Mutation {
-        newEmployeeV2(nintendoEmployee: NewNintendoEmployeeInput) : NewNintendoEmployee
         newEmployee(nintendoEmployee: NewNintendoEmployeeInput) : NewNintendoEmployee
+        newEmployeeV2(nintendoEmployee: NewNintendoEmployeeInput) : NintendoEmployee
     }
 
     input NewNintendoEmployeeInput {
@@ -23,14 +23,6 @@
         address: Address
         phone: Phone
         email: Email
-    }
-
-    type NewEmployee {
-        nintendoId: String!
-        name: Name
-        addresses: [Address]
-        phones: [Phone]
-        emails: [Email]
     }
 
     type NintendoEmployee {
@@ -54,7 +46,6 @@
     }
 
     type ContactInformation {
-        nintendoId: String!
         addresses: [Address]
         addressHistories(first: Int!, before: String): addressHistoryConnection
         phones: [Phone]

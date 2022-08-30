@@ -112,7 +112,8 @@ async function makeGatewaySchema() {
       // Resolving the Project object 
       Project: {
         franchise: {
-          selectionSet: `{ id }`, 
+          // TODO: Demo - Additional Stuff to Show in if time allows
+          selectionSet: `{ franchiseId }`, 
           resolve(project, args, context, info) {
             return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
           }
@@ -121,13 +122,11 @@ async function makeGatewaySchema() {
       // Resolving the ContactInformation object
       ContactInformation: {
         addresses: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         },
         addressHistories: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({
               schema: subSchemaContact, operation: 'query', fieldName: 'addressHistories', 
@@ -139,13 +138,11 @@ async function makeGatewaySchema() {
           }
         },
         phones: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         }, 
         phoneHistories: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({
               schema: subSchemaContact, operation: 'query', fieldName: 'phoneHistories', 
@@ -157,13 +154,11 @@ async function makeGatewaySchema() {
           }
         }, 
         emails: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         },
         emailHistories: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({
               schema: subSchemaContact, operation: 'query', fieldName: 'emailHistories', 

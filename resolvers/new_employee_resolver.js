@@ -1,7 +1,7 @@
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 const { issueNewTeammate }  = require('../services/team_service');
 
-const { addressCollectionSet, phoneCollectionSet, emailCollectionSet } = require('../services/contact_selection_set');
+const { addressCollectionSet, phoneCollectionSet, emailCollectionSet } = require('./contact_selection_set');
 
 module.exports = function newEmployee(subSchemaContact, object, args, context, info) {
     const newTeammate = issueNewTeammate(args.nintendoEmployee.teammate);
