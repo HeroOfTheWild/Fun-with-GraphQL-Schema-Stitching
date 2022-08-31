@@ -1,5 +1,5 @@
 const { fetch } = require('cross-fetch');
-const { print } = require('graphql');
+const { GraphQLError, print } = require('graphql');
 const NotFound = require('./errors/not_found');
 const IssueEmployeeError = require('./errors/issue_employee_error');
 
@@ -47,17 +47,24 @@ async function retrieveTeamInfo(nintendoId) {
       })
     });
     const result = await response.json();
-    const data = result.data.myNintendoAccount;
-    if (null === data) {
+
+    const errors = result.errors;
+    if (errors != null) {
+      throw new GraphQLError(errors[0].message);
+    }
+
+    const myNintendoAccount = result.data.myNintendoAccount;
+    if (null === myNintendoAccount) {
       throw new NotFound("No record found with this ID: " + nintendoId);
     }
+
     return {
-      nintendoId: data.nintendoId,
-      teamId: data.teamId,
+      nintendoId: myNintendoAccount.nintendoId,
+      teamId: myNintendoAccount.teamId,
       teamInfo: {
-        teamId: data.teamId,
-        teamName: data.teamInfo.teamName,
-        managerId: data.teamInfo.managerId
+        teamId: myNintendoAccount.teamId,
+        teamName: myNintendoAccount.teamInfo.teamName,
+        managerId: myNintendoAccount.teamInfo.managerId
       }
     };
   } catch (err) {

@@ -10,8 +10,8 @@ const { retrieveTeamInfo }  = require('./services/team_service');
 const newEmployee           = require('./resolvers/new_employee_resolver');
 
 const teamSchema            = require('./subgraphs/team/schema');
-const makeRemoteExecutor    = require('./services/make_remote_executor');
 const gatewaySchema         = require('./gateway_schema');
+const makeRemoteExecutor    = require('./services/make_remote_executor');
 
 async function makeGatewaySchema() {
   // Make remote executors:
@@ -51,7 +51,7 @@ async function makeGatewaySchema() {
       // Resolving the employeeData Query
       Query: {
         employeeData(obj, args, context, info) {
-          return retrieveTeamInfo(args.id);
+          return retrieveTeamInfo(args.nintendoId);
         }
       },
       // Resolving the newEmployee Query
@@ -59,7 +59,8 @@ async function makeGatewaySchema() {
         newEmployee(obj, args, context, info) {
           return newEmployee(subSchemaContact, obj, args, context, info);
         },
-        newEmployeeV2(obj, args, context, info) {
+        // TODO Try a difference approach for mutation resolution for new employees
+        issueEmployee(obj, args, context, info) {
           return null;
         }
       }, 
@@ -90,6 +91,7 @@ async function makeGatewaySchema() {
           }
         },
         projects : {
+          selectionSet: `{ teamId }`, 
           resolve(nintendoEmployee, args, context, info) {
             return delegateToSchema({
               schema: subSchemaProject, operation: 'query', fieldName: 'projectsByCriteria', 
@@ -104,6 +106,8 @@ async function makeGatewaySchema() {
       // Resolving the Teammate object 
       Teammate: {
         details: {
+          // TODO: Demo - Additional Stuff to Show in if time allows
+          selectionSet: `{ nintendoId }`, 
           resolve(teammate, args, context, info) {
             return {nintendoId: teammate.nintendoId, teamId: teammate.teamId}
           }

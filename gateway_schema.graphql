@@ -1,11 +1,13 @@
+    scalar NintendoId
+    
     type Query {
         # Retrieve all employee information associated to a NintendoID
-        employeeData(id: NintendoId!): NintendoEmployee
+        employeeData(nintendoId: NintendoId!): NintendoEmployee
     }
 
     type Mutation {
         newEmployee(nintendoEmployee: NewNintendoEmployeeInput) : NewNintendoEmployee
-        newEmployeeV2(nintendoEmployee: NewNintendoEmployeeInput) : NintendoEmployee
+        issueEmployee(nintendoEmployee: NewNintendoEmployeeInput) : NintendoEmployee
     }
 
     input NewNintendoEmployeeInput {
