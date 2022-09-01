@@ -2,20 +2,31 @@ scalar NintendoId
 scalar NintendoTeamId
 
 type Query {
-    # Retrieve a Name associated to a Nintendo ID
-    name(nintendoId: NintendoId!): Name
+    # Retrieves Name and Primary Team info associated to a Nintendo ID
+    myNintendoAccount(nintendoId: NintendoId!): Teammate
 
-    # Retrieve Primary Team Info associated to a Nintendo ID
-    primaryTeam(nintendoId: NintendoId!): Teammate
+    # Retrieve a Name associated to a Nintendo ID
+    myName(nintendoId: NintendoId!): Name
 
     # Retrieve all Teammates associated to a Nintendo ID
-    teammates(nintendoId: NintendoId!): [Teammate]
+    myTeammates(nintendoId: NintendoId!): [Teammate]
 
+    # Retrieves the Primary Team info associated to the Nintendo ID
+    myPrimaryTeam(nintendoId: NintendoId!): Team
+
+    # Retrieve Team infos associated to a Nintendo ID
+    myTeams(nintendoId: NintendoId!): [Team]
+
+    # Retrieve Team associated to the TeamId
+    team(teamId: NintendoTeamId!): Team
+    
     # Retrieve all Teammates associated to a TeamId
-    team(teamId: NintendoTeamId!): [Teammate]
+    teammates(teamId: NintendoTeamId!): [Teammate]
+}
 
-    # Retrieve Team Infos associated to a Nintendo ID
-    myTeams(nintendoId: NintendoId!): [Teammate]
+type Teammate {
+    nintendoId: String!
+    teamId: String!
 }
 
 type Name {
@@ -25,9 +36,19 @@ type Name {
     lastName: String
 }
 
-type Teammate {
-    nintendoId: String!
+type Team {
     teamId: String!
     teamName: String
     managerId: String
+}
+
+input TeammateInput {
+    teamId: NintendoTeamId!
+    name: NameInput!
+}
+
+input NameInput {
+    firstName: String
+    middleName: String
+    lastName: String!
 }

@@ -1,21 +1,21 @@
-const express     = require('express');
-const depthLimit  = require('graphql-depth-limit');
+const express               = require('express');
+const depthLimit            = require('graphql-depth-limit');
 
-const { graphqlHTTP }   = require('express-graphql');
-const { stitchSchemas } = require('@graphql-tools/stitch');
-const { delegateToSchema } = require('@graphql-tools/delegate')
-const { introspectSchema } = require('@graphql-tools/wrap');
-const { fetch } = require('cross-fetch');
-const { print } = require('graphql');
+const { graphqlHTTP }       = require('express-graphql');
+const { stitchSchemas }     = require('@graphql-tools/stitch');
+const { delegateToSchema }  = require('@graphql-tools/delegate');
+const { introspectSchema }  = require('@graphql-tools/wrap');
 
-const NotFound = require('./services/not_found');
+const { retrieveTeamInfo }  = require('./services/team_service');
+const newEmployee           = require('./resolvers/new_employee_resolver');
 
-const teamSchema          = require('./subgraphs/team/schema');
-const makeRemoteExecutor  = require('./services/make_remote_executor');
+const teamSchema            = require('./subgraphs/team/schema');
+const gatewaySchema         = require('./gateway_schema');
+const makeRemoteExecutor    = require('./services/make_remote_executor');
 
 async function makeGatewaySchema() {
   // Make remote executors:
-  //  These are simple functions that query a remote GraphQL API.
+  //  These are simple functions that query a remote GraphQL API for JSON.
   const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
   const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
   const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
@@ -38,106 +38,60 @@ async function makeGatewaySchema() {
     executor: projectExec
   }
 
-  // GraphQL Query to retrieve the Team Details associated to a NintendoId
-  const myTeamInfoQuery = `
-      query primary($nintendoId: NintendoId!) {
-        primaryTeam(nintendoId: $nintendoId) {
-            nintendoId
-            teamId
-            teamName
-            managerId
-        }
-      }
-  `
-
   // Under the hood, `stitchSchemas` is a wrapper for `makeExecutableSchema`,
   // and accepts all of its same options. This allows extra type definitions
   // and resolvers to be added directly into the top-level gateway proxy schema.
   return stitchSchemas({
-    // Adding our subSchemas
+    // Our Stitched Gateway will have access to all queries/mutations defined by our Sub Graphs
     subschemas: [subSchemaTeam, subSchemaContact, subSchemaProject],
-    typeDefs: 
-    `
-      type Query {
-        # Retrieve all employee information associated to a NintendoID
-        employeeData(id: NintendoId!): NintendoEmployee
-      }
-
-      type NintendoEmployee {
-        nintendoId: String!
-        teamId: String!
-        name: Name
-        projects(franchiseId: String, status: ProjectStatus): [Project]
-        contactInformation: ContactInformation
-        teammates: [Teammate]
-      }
-
-      # Extending the Teammate type to allow look ups information for a member
-      extend type Teammate {
-        details: NintendoEmployee
-      }
-
-      # Extending the Project type to bring in the Franchise Information
-      extend type Project {
-        franchise: Franchise
-      }
-
-      type ContactInformation {
-        nintendoId: String!
-        address: [Address]
-        addressHistories(first: Int!, before: String): addressHistoryConnection
-        phone: [Phone]
-        phoneHistories(first: Int!, before: String): phoneHistoryConnection
-        email: [Email]
-        emailHistories(first: Int!, before: String): emailHistoryConnection
-      }
-    `
-    ,
+    // Defining extra types, queries, and mutations on the Gateway Schema
+    typeDefs: gatewaySchema,
+    // Resolving our Gateway Schema
     resolvers: {
-      // Resolving the employeeDataById Query
+      // Resolving the employeeData Query
       Query: {
         employeeData(obj, args, context, info) {
-          const query = typeof myTeamInfoQuery === 'string' ? myTeamInfoQuery : print(myTeamInfoQuery);
-          const ninId = args.id
-          return fetch('http://localhost:8081/nintendo/team/graphql', {
-            method: 'POST',
-            body: JSON.stringify({ 
-              query, 
-              variables: { nintendoId: ninId } 
-            }),
-          }).then((response) => response.json()).then(result => {
-            const info = result.data.primaryTeam
-            if (null === info) {
-              throw new NotFound("No record found with this ID: " + ninId);
-            }
-
-            return  {
-                      nintendoId: info.nintendoId, 
-                      teamId: info.teamId,
-                      teamName: info.teamName,
-                      managerId: info.managerId
-                    }
-          }).catch((err) => {
-            throw err;
-          })
-        } 
+          return retrieveTeamInfo(args.nintendoId);
+        }
       },
+      // Resolving the newEmployee Query
+      Mutation: {
+        newEmployee(obj, args, context, info) {
+          return newEmployee(subSchemaContact, obj, args, context, info);
+        },
+        // TODO Try a difference approach for mutation resolution for new employees
+        issueEmployee(obj, args, context, info) {
+          return null;
+        }
+      }, 
       // Resolving the NintendoEmployee object
       NintendoEmployee: {
         name: {
-          selectionSet: `{ id }`, 
           resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'name', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myName', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+          }
+        },
+        teamInfo: {
+          resolve(nintendoEmployee, args, context, info) {
+            var teamInfo = nintendoEmployee.teamInfo
+            if(null == teamInfo) {
+              return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myPrimaryTeam', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+            }
+            return teamInfo            
+          }
+        },
+        contactInformation: {
+          resolve(nintendoEmployee, args, context, info) {
+            return {nintendoId: nintendoEmployee.nintendoId}
           }
         },
         teammates: {
-          selectionSet: `{ id }`, 
           resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'teammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myTeammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
           }
         },
         projects : {
-          selectionSet: `{ id }`, 
+          selectionSet: `{ teamId }`, 
           resolve(nintendoEmployee, args, context, info) {
             return delegateToSchema({
               schema: subSchemaProject, operation: 'query', fieldName: 'projectsByCriteria', 
@@ -145,21 +99,15 @@ async function makeGatewaySchema() {
                 teamId: nintendoEmployee.teamId,
                 franchiseId: args.franchiseId,
                 status: args.status
-              }, context, info})
-          }
-        },
-        // Setting up the Contact Information with the NintendoId
-        contactInformation: {
-          selectionSet: `{ id }`, 
-          resolve(nintendoEmployee, args, context, info) {
-            return {nintendoId: nintendoEmployee.nintendoId}
+              }, context, info});
           }
         }
       }, 
       // Resolving the Teammate object 
       Teammate: {
         details: {
-          selectionSet: `{ id }`, 
+          // TODO: Demo - Additional Stuff to Show in if time allows
+          selectionSet: `{ nintendoId }`, 
           resolve(teammate, args, context, info) {
             return {nintendoId: teammate.nintendoId, teamId: teammate.teamId}
           }
@@ -168,69 +116,61 @@ async function makeGatewaySchema() {
       // Resolving the Project object 
       Project: {
         franchise: {
-          selectionSet: `{ id }`, 
+          // TODO: Demo - Additional Stuff to Show in if time allows
+          selectionSet: `{ franchiseId }`, 
           resolve(project, args, context, info) {
-            return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info})
+            return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
           }
         }
       },
       // Resolving the ContactInformation object
       ContactInformation: {
-        address: {
-          selectionSet: `{ id }`, 
+        addresses: {
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { id: contactInformation.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         },
         addressHistories: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({
               schema: subSchemaContact, operation: 'query', fieldName: 'addressHistories', 
               args: { 
-                id: contactInformation.nintendoId, 
+                nintendoId: contactInformation.nintendoId, 
                 rows: args.first,
                 before: args.before
-              }, 
-              context, info})
+              }, context, info});
           }
         },
-        phone: {
-          selectionSet: `{ id }`, 
+        phones: {
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { id: contactInformation.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         }, 
         phoneHistories: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({
               schema: subSchemaContact, operation: 'query', fieldName: 'phoneHistories', 
               args: { 
-                id: contactInformation.nintendoId, 
+                nintendoId: contactInformation.nintendoId, 
                 rows: args.first,
                 before: args.before
-              }, 
-              context, info})
+              }, context, info});
           }
         }, 
-        email: {
-          selectionSet: `{ id }`, 
+        emails: {
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { id: contactInformation.nintendoId }, context, info})
+            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info});
           }
         },
         emailHistories: {
-          selectionSet: `{ id }`, 
           resolve(contactInformation, args, context, info) {
             return delegateToSchema({
               schema: subSchemaContact, operation: 'query', fieldName: 'emailHistories', 
               args: { 
-                id: contactInformation.nintendoId, 
+                nintendoId: contactInformation.nintendoId, 
                 rows: args.first,
                 before: args.before
-              }, 
-              context, info})
+              }, context, info});
           }
         }
       }
