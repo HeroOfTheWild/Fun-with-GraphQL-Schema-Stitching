@@ -50,8 +50,8 @@ Checkout the attached Postman Collection for more examples. Below is an example 
 ```graphql
 query allData($nintendoId: NintendoId!, 
   $includeName: Boolean!, $includeTeam: Boolean!, $includeProjects: Boolean!, 
-  $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){
-  employeeData(id: $nintendoId) {
+  $includeContact: Boolean!, $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){
+  employeeData(nintendoId: $nintendoId) {
     nintendoId
     name @include(if: $includeName) {
       firstName
@@ -59,7 +59,6 @@ query allData($nintendoId: NintendoId!,
       lastName
     }
     teammates @include(if: $includeTeam) {
-      teamName
       teamId
       nintendoId
       details {
@@ -68,13 +67,13 @@ query allData($nintendoId: NintendoId!,
           lastName
         }
         contactInformation {
-          email {
+          emails {
             emailAddress
           }
-          phone {
+          phones {
             number
           }
-          address {
+          addresses {
             streetAddress
           }
         }
@@ -83,14 +82,12 @@ query allData($nintendoId: NintendoId!,
     projects @include(if: $includeProjects) {
       projectName
       status
-      franchiseId
       franchise {
         title
       }
     }
-    contactInformation {
-      nintendoId
-      address @include(if: $includeAddress) {
+    contactInformation @include(if: $includeContact){
+      addresses @include(if: $includeAddress) {
         id
         country
         stateProvince
@@ -100,60 +97,16 @@ query allData($nintendoId: NintendoId!,
         regionCode
         lastModified
       }
-      phone @include(if: $includePhone) {
+      phones @include(if: $includePhone) {
         id
         countryCode
         number
         lastModified
       }
-      email @include(if: $includeEmail) {
+      emails @include(if: $includeEmail) {
         id
         emailAddress
         lastModified
-      }
-      addressHistories(first: 2) @include(if: $includeAddress) {
-        edges {
-          cursor
-          node {
-            id
-            country
-            stateProvince
-            cityName
-            streetAddress
-            postalCode
-            regionCode
-            lastModified
-          }
-        }
-        pageInfo {
-          startCursor
-          endCursor
-        }
-      }
-      phoneHistories(first: 2) @include(if: $includePhone) {
-        edges {
-          cursor
-          node {
-            id
-            countryCode
-            number
-            lastModified
-          }
-        }
-      }
-      emailHistories(first: 2) @include(if: $includeEmail) {
-        edges {
-          cursor
-          node {
-            id
-            emailAddress
-            lastModified
-          }
-        }
-        pageInfo {
-          startCursor
-          endCursor
-        }
       }
     }
   }
@@ -164,8 +117,9 @@ Variables
 ```json 
 {
   "nintendoId": "nin0001",
-  "includeName": true,
-  "includeTeam": true,
+  "includeName": false,
+  "includeTeam": false,
+  "includeContact": false,
   "includeAddress": true,
   "includePhone": true,
   "includeEmail": true,
