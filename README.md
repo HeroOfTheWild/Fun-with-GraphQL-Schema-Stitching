@@ -5,16 +5,18 @@ I'll continue to add more to this project as I learn more about schema stitching
 **As a disclaimer, I am new to Javascript so expect to cringe when looking through my code** 
 
 ## Interesting things to learn from this Project
-- Adding a locally executable schema
+- Adding a locally schema
 - Adding a remote schema using Introspection
-- Creating Gateway Types and using Resolvers to resolve that data for the new type
+- Creating new Types on the stitched gateway and using Resolvers to resolve that data for the new type
 - Extending Types coming from Subschemas and adding Resolvers to handle it
     - Something cool to note, we extended the teammate Type from the [Team GraphQL](https://github.com/HeroOfTheWild/nintendo-team-graphql-api) and added the contact details from the [Contact GraphQL](https://github.com/HeroOfTheWild/nintendo-contact-graphql-api/tree/master/src/main/resources/graphql). 
+- Creating new mutations on top of existing mutations
+- Adding selection sets when delegating to schema to ensure we get certain elements even if the client didn't request them. 
 - Custom Scalar Types for id validation. 
+
 
 ## Next Steps
 - Adding Authorization
-- Working with Mutations and Resolving
 - Further expanding on Custom Scalar Types
 
 ## What you need
@@ -42,9 +44,9 @@ yarn start
 ```
 
 ## Playing with this API 
-Visit the GraphIQL interface for the [stitched gateway](http://localhost:8080/nintendo/graphql) to play around with it. 
+Visit the GraphQL Playground interface for the [stitched gateway](http://localhost:8080/nintendo/playground) to mess around with the mutations and queries. 
 
-Checkout the attached Postman Collection for more examples. Below is an example for querying all Nintendo Employee Details. 
+Below is an example for querying all Nintendo Employee Details. Checkout the attached Postman Collection for more examples. 
 
  GraphQL Query
 ```graphql
@@ -54,29 +56,19 @@ query allData($nintendoId: NintendoId!,
   employeeData(nintendoId: $nintendoId) {
     nintendoId
     name @include(if: $includeName) {
-      firstName
-      middleName
-      lastName
+      ...fullName
+    }
+    teamInfo {
+      teamName
     }
     teammates @include(if: $includeTeam) {
       teamId
       nintendoId
       details {
         name {
-          firstName
-          lastName
+          ...fullName
         }
-        contactInformation {
-          emails {
-            emailAddress
-          }
-          phones {
-            number
-          }
-          addresses {
-            streetAddress
-          }
-        }
+        ...contact
       }
     }
     projects @include(if: $includeProjects) {
@@ -86,28 +78,32 @@ query allData($nintendoId: NintendoId!,
         title
       }
     }
-    contactInformation @include(if: $includeContact){
-      addresses @include(if: $includeAddress) {
-        id
-        country
-        stateProvince
-        cityName
-        streetAddress
-        postalCode
-        regionCode
-        lastModified
-      }
-      phones @include(if: $includePhone) {
-        id
-        countryCode
-        number
-        lastModified
-      }
-      emails @include(if: $includeEmail) {
-        id
-        emailAddress
-        lastModified
-      }
+    ...contact
+  }
+}
+
+fragment fullName on Name {
+  firstName
+  middleName
+  lastName
+}
+
+fragment contact on NintendoEmployee {
+   contactInformation @include(if: $includeContact) {
+    emails @include(if: $includeEmail) {
+      emailAddress
+      purpose
+    }
+    phones @include(if: $includePhone) {
+      number
+      type
+    }
+    addresses @include(if: $includeAddress) {
+      country
+      streetAddress
+      cityName
+      stateProvince
+      postalCode
     }
   }
 }
@@ -117,9 +113,9 @@ Variables
 ```json 
 {
   "nintendoId": "nin0001",
-  "includeName": false,
-  "includeTeam": false,
-  "includeContact": false,
+  "includeName": true,
+  "includeTeam": true,
+  "includeContact": true,
   "includeAddress": true,
   "includePhone": true,
   "includeEmail": true,
@@ -128,6 +124,6 @@ Variables
 ```
 
 The results of this query are retrieved from the underlying subschemas by the stitched gateway. 
-- `name` and `teammates` come from the remote Nintendo Team server. 
-- `address`, `phone`, and `email` come from the remote Nintendo Contact server.
-- `project` and `franchises` come from the remote Nintendo Project server.
+- `name` and `teammates` come from the remote [Nintendo Team server](https://github.com/HeroOfTheWild/nintendo-team-graphql-api). 
+- `address`, `phone`, and `email` come from the remote [Nintendo Contact server](https://github.com/HeroOfTheWild/nintendo-contact-graphql-api).
+- `project` and `franchises` come from the remote [Nintendo Project server](https://github.com/HeroOfTheWild/nintendo-project-graphql-api).

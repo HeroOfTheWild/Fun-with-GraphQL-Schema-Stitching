@@ -7,7 +7,6 @@
 
     type Mutation {
         newEmployee(nintendoEmployee: NewNintendoEmployeeInput) : NewNintendoEmployee
-        issueEmployee(nintendoEmployee: NewNintendoEmployeeInput) : NintendoEmployee
     }
 
     input NewNintendoEmployeeInput {

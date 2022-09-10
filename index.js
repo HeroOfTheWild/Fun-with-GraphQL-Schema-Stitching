@@ -1,7 +1,9 @@
 const express               = require('express');
+const { graphqlHTTP }       = require('express-graphql');
+const expressPlayground     = require('graphql-playground-middleware-express').default
 const depthLimit            = require('graphql-depth-limit');
 
-const { graphqlHTTP }       = require('express-graphql');
+
 const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 const { introspectSchema }  = require('@graphql-tools/wrap');
@@ -58,10 +60,6 @@ async function makeGatewaySchema() {
       Mutation: {
         newEmployee(obj, args, context, info) {
           return newEmployee(subSchemaContact, obj, args, context, info);
-        },
-        // TODO Try a difference approach for mutation resolution for new employees
-        issueEmployee(obj, args, context, info) {
-          return null;
         }
       }, 
       // Resolving the NintendoEmployee object
@@ -179,14 +177,19 @@ async function makeGatewaySchema() {
 }
 
 makeGatewaySchema().then(schema => {
+  const PORT = 8080;
+  const CONTEXT_PATH = "/nintendo/graphql";
   const app = express();
-  app.use('/nintendo/graphql', graphqlHTTP({ 
+
+  app.use(CONTEXT_PATH, graphqlHTTP({ 
     schema, 
-    graphiql: true,
     // Since NintendoEmployee has a Teammate field and we extended Teammate to have a NintendoEmployee field
     // it is really easy for a malicious actor to take advantage of this feature by sending a chained Malicious Query and overwhelm/crash our API
     // To prevent this, we can add a depthLimit
     validationRules: [ depthLimit(5) ]
   }));
-  app.listen(8080, () => console.log('gateway running at http://localhost:8080/nintendo/graphql'));
+
+  app.get('/nintendo/playground', expressPlayground({endpoint: '/nintendo/graphql'}));
+
+  app.listen(PORT, () => console.log(`gateway running at http://localhost:${PORT}${CONTEXT_PATH}`));
 });
