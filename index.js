@@ -101,7 +101,6 @@ async function makeGatewaySchema() {
       // Resolving the Teammate object 
       Teammate: {
         details: {
-          // Definiting the Selection Set tells the parent object to include a specific field
           selectionSet: `{ nintendoId }`, 
           resolve(teammate, args, context, info) {
             return {nintendoId: teammate.nintendoId, teamId: teammate.teamId}
@@ -111,7 +110,8 @@ async function makeGatewaySchema() {
       // Resolving the Project object 
       Project: {
         franchise: {
-          // Definiting the Selection Set tells the parent object to include a specific field
+          // Defining a Selection Set tells the parent object to include a specific field. 
+          // In this case, even if the client doesn't request for the franchiseId, we are guaranteed it will be there thanks to our selectionSet
           selectionSet: `{ franchiseId }`, 
           resolve(project, args, context, info) {
             return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
