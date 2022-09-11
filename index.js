@@ -1,21 +1,20 @@
 const express               = require('express');
+const { graphqlHTTP }       = require('express-graphql');
+const expressPlayground     = require('graphql-playground-middleware-express').default
 const depthLimit            = require('graphql-depth-limit');
 
-const { graphqlHTTP }       = require('express-graphql');
 const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 const { introspectSchema }  = require('@graphql-tools/wrap');
 
 const { retrieveTeamInfo }  = require('./services/team_service');
+const makeRemoteExecutor    = require('./services/make_remote_executor');
 const newEmployee           = require('./resolvers/new_employee_resolver');
-
 const teamSchema            = require('./subgraphs/team/schema');
 const gatewaySchema         = require('./gateway_schema');
-const makeRemoteExecutor    = require('./services/make_remote_executor');
 
 async function makeGatewaySchema() {
-  // Make remote executors:
-  //  These are simple functions that query a remote GraphQL API for JSON.
+  // These executors are simple functions used to delegate queries and mutations from the gateway graph to their respective subgraphs
   const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
   const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
   const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
@@ -58,10 +57,6 @@ async function makeGatewaySchema() {
       Mutation: {
         newEmployee(obj, args, context, info) {
           return newEmployee(subSchemaContact, obj, args, context, info);
-        },
-        // TODO Try a difference approach for mutation resolution for new employees
-        issueEmployee(obj, args, context, info) {
-          return null;
         }
       }, 
       // Resolving the NintendoEmployee object
@@ -106,7 +101,6 @@ async function makeGatewaySchema() {
       // Resolving the Teammate object 
       Teammate: {
         details: {
-          // TODO: Demo - Additional Stuff to Show in if time allows
           selectionSet: `{ nintendoId }`, 
           resolve(teammate, args, context, info) {
             return {nintendoId: teammate.nintendoId, teamId: teammate.teamId}
@@ -116,7 +110,8 @@ async function makeGatewaySchema() {
       // Resolving the Project object 
       Project: {
         franchise: {
-          // TODO: Demo - Additional Stuff to Show in if time allows
+          // Defining a Selection Set tells the parent object to include a specific field. 
+          // In this case, even if the client doesn't request for the franchiseId, we are guaranteed it will be there thanks to our selectionSet
           selectionSet: `{ franchiseId }`, 
           resolve(project, args, context, info) {
             return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
@@ -179,14 +174,18 @@ async function makeGatewaySchema() {
 }
 
 makeGatewaySchema().then(schema => {
+  const PORT = 8080;
+  const CONTEXT_PATH = "/nintendo/graphql";
   const app = express();
-  app.use('/nintendo/graphql', graphqlHTTP({ 
+
+  app.use(CONTEXT_PATH, graphqlHTTP({ 
     schema, 
-    graphiql: true,
     // Since NintendoEmployee has a Teammate field and we extended Teammate to have a NintendoEmployee field
     // it is really easy for a malicious actor to take advantage of this feature by sending a chained Malicious Query and overwhelm/crash our API
     // To prevent this, we can add a depthLimit
     validationRules: [ depthLimit(5) ]
   }));
-  app.listen(8080, () => console.log('gateway running at http://localhost:8080/nintendo/graphql'));
+
+  app.get('/nintendo/playground', expressPlayground({endpoint: CONTEXT_PATH}));
+  app.listen(PORT, () => console.log(`gateway running at http://localhost:${PORT}${CONTEXT_PATH}`));
 });
