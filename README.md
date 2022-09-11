@@ -5,8 +5,8 @@ I'll continue to add more to this project as I learn more about schema stitching
 **As a disclaimer, I am new to Javascript so expect to cringe when looking through my code** 
 
 ## Interesting things to learn from this Project
-- Adding a locally schema
-- Adding a remote schema using Introspection
+- Adding subschema definitions from a local file 
+- Adding subschema definitions remotely using Introspection
 - Creating new Types on the stitched gateway and using Resolvers to resolve that data for the new type
 - Extending Types coming from Subschemas and adding Resolvers to handle it
     - Something cool to note, we extended the teammate Type from the [Team GraphQL](https://github.com/HeroOfTheWild/nintendo-team-graphql-api) and added the contact details from the [Contact GraphQL](https://github.com/HeroOfTheWild/nintendo-contact-graphql-api/tree/master/src/main/resources/graphql). 
@@ -19,17 +19,15 @@ I'll continue to add more to this project as I learn more about schema stitching
 - Adding Authorization
 - Further expanding on Custom Scalar Types
 
-## What you need
-**Be sure to download the other two Projects below**
-
-- **Stitched Nintendo Gateway:** `http://localhost:8080/nintendo/graphql`
-- _Nintendo Team subservice_: 
+## What you need to run this GraphQL API
+**Be sure to download the other three Projects below**
+- _Nintendo Team GraphQL API_: 
     - Can be found [here](https://github.com/HeroOfTheWild/nintendo-team-graphql-api) 
     - will be running on `http://localhost:8081/nintendo/team/graphql`
-- _Nintendo Contact subservice_: 
+- _Nintendo Contact GraphQL API_: 
     - Can be found [here](https://github.com/HeroOfTheWild/nintendo-contact-graphql-api)
     - will be running on `http://localhost:8082/nintendo/contact/graphql`
-- _Nintendo Project subservice_: 
+- _Nintendo Project GraphQL API_: 
     - Can be found [here](https://github.com/HeroOfTheWild/nintendo-project-graphql-api)
     - will be running on `http://localhost:8083/nintendo/project/graphql`
 

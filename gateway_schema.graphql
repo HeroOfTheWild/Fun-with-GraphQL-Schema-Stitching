@@ -6,6 +6,7 @@
     }
 
     type Mutation {
+        # Issue a new Employee
         newEmployee(nintendoEmployee: NewNintendoEmployeeInput) : NewNintendoEmployee
     }
 
@@ -26,6 +27,7 @@
         email: Email
     }
 
+    # Information pertaining to a Nintendo Employee
     type NintendoEmployee {
         nintendoId: String!
         teamId: String!
@@ -46,6 +48,7 @@
         franchise: Franchise
     }
 
+    # Contains information such as addresses, phone numbers, and emails
     type ContactInformation {
         addresses: [Address]
         addressHistories(first: Int!, before: String): addressHistoryConnection

@@ -3,21 +3,18 @@ const { graphqlHTTP }       = require('express-graphql');
 const expressPlayground     = require('graphql-playground-middleware-express').default
 const depthLimit            = require('graphql-depth-limit');
 
-
 const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 const { introspectSchema }  = require('@graphql-tools/wrap');
 
 const { retrieveTeamInfo }  = require('./services/team_service');
+const makeRemoteExecutor    = require('./services/make_remote_executor');
 const newEmployee           = require('./resolvers/new_employee_resolver');
-
 const teamSchema            = require('./subgraphs/team/schema');
 const gatewaySchema         = require('./gateway_schema');
-const makeRemoteExecutor    = require('./services/make_remote_executor');
 
 async function makeGatewaySchema() {
-  // Make remote executors:
-  //  These are simple functions that query a remote GraphQL API for JSON.
+  // These executors are simple functions used to delegate queries and mutations from the gateway graph to their respective subgraphs
   const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
   const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
   const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
@@ -104,7 +101,7 @@ async function makeGatewaySchema() {
       // Resolving the Teammate object 
       Teammate: {
         details: {
-          // TODO: Demo - Additional Stuff to Show in if time allows
+          // Definiting the Selection Set tells the parent object to include a specific field
           selectionSet: `{ nintendoId }`, 
           resolve(teammate, args, context, info) {
             return {nintendoId: teammate.nintendoId, teamId: teammate.teamId}
@@ -114,7 +111,7 @@ async function makeGatewaySchema() {
       // Resolving the Project object 
       Project: {
         franchise: {
-          // TODO: Demo - Additional Stuff to Show in if time allows
+          // Definiting the Selection Set tells the parent object to include a specific field
           selectionSet: `{ franchiseId }`, 
           resolve(project, args, context, info) {
             return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
@@ -189,7 +186,6 @@ makeGatewaySchema().then(schema => {
     validationRules: [ depthLimit(5) ]
   }));
 
-  app.get('/nintendo/playground', expressPlayground({endpoint: '/nintendo/graphql'}));
-
+  app.get('/nintendo/playground', expressPlayground({endpoint: CONTEXT_PATH}));
   app.listen(PORT, () => console.log(`gateway running at http://localhost:${PORT}${CONTEXT_PATH}`));
 });
