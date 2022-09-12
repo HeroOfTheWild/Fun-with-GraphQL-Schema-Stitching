@@ -70,7 +70,7 @@ async function retrieveTeamInfo(nintendoId) {
   } catch (err) {
     throw err;
   }
-}
+};
 
 async function issueNewTeammate(teammateInput) {
   const mutation = typeof newTeammateMutation === 'string' ? newTeammateMutation : print(newTeammateMutation);
@@ -92,6 +92,6 @@ async function issueNewTeammate(teammateInput) {
   } catch(err) {
     throw err;
   }
-}
+};
 
 module.exports = {retrieveTeamInfo, issueNewTeammate }

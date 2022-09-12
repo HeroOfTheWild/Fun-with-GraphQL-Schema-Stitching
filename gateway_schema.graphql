@@ -3,6 +3,7 @@
     type Query {
         # Retrieve all employee information associated to a NintendoID
         employeeData(nintendoId: NintendoId!): NintendoEmployee
+        healthCheck: String
     }
 
     type Mutation {

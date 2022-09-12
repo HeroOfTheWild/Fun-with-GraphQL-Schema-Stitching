@@ -7,6 +7,7 @@ const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 const { introspectSchema }  = require('@graphql-tools/wrap');
 
+const { healthCheck }       = require('./utilities/healthCheck');
 const { retrieveTeamInfo }  = require('./services/team_service');
 const makeRemoteExecutor    = require('./services/make_remote_executor');
 const newEmployee           = require('./resolvers/new_employee_resolver');
@@ -51,6 +52,9 @@ async function makeGatewaySchema() {
       Query: {
         employeeData(obj, args, context, info) {
           return retrieveTeamInfo(args.nintendoId);
+        }, 
+        healthCheck(obj, args, context, info) {
+          return "OK";
         }
       },
       // Resolving the newEmployee Query
@@ -187,5 +191,17 @@ makeGatewaySchema().then(schema => {
   }));
 
   app.get('/nintendo/playground', expressPlayground({endpoint: CONTEXT_PATH}));
+
+  app.get('/health', (request, response, next)=> {
+    healthCheck().then((res) => {
+      return response.json(res);
+    }).catch((err) => {
+      console.log(err);
+      console.log("OOOOOOH. Let's see")
+      return response.status(500).send(err.healthStatus);
+    });
+    
+  });
+
   app.listen(PORT, () => console.log(`gateway running at http://localhost:${PORT}${CONTEXT_PATH}`));
 });
