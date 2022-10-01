@@ -1,7 +1,7 @@
 const { fetch } = require('cross-fetch');
 const { GraphQLError, print } = require('graphql');
-const NotFound = require('./errors/not_found');
-const IssueEmployeeError = require('./errors/issue_employee_error');
+const NotFound = require('../errors/not_found_error');
+const IssueEmployeeError = require('../errors/issue_employee_error');
 
 const myTeamInfoQuery = `
     query primary($nintendoId: NintendoId!) {
@@ -70,7 +70,7 @@ async function retrieveTeamInfo(nintendoId) {
   } catch (err) {
     throw err;
   }
-}
+};
 
 async function issueNewTeammate(teammateInput) {
   const mutation = typeof newTeammateMutation === 'string' ? newTeammateMutation : print(newTeammateMutation);
@@ -92,6 +92,6 @@ async function issueNewTeammate(teammateInput) {
   } catch(err) {
     throw err;
   }
-}
+};
 
 module.exports = {retrieveTeamInfo, issueNewTeammate }

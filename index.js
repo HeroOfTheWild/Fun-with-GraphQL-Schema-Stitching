@@ -5,37 +5,22 @@ const depthLimit            = require('graphql-depth-limit');
 
 const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
-const { introspectSchema }  = require('@graphql-tools/wrap');
 
-const { retrieveTeamInfo }  = require('./services/team_service');
-const makeRemoteExecutor    = require('./services/make_remote_executor');
-const newEmployee           = require('./resolvers/new_employee_resolver');
-const teamSchema            = require('./subgraphs/team/schema');
-const gatewaySchema         = require('./gateway_schema');
+const newEmployee           = require('./src/resolvers/new_employee_resolver');
+const nintendoEmployee      = require('./src/resolvers/nintendo_employee_resolver');
+const contactInformation    = require('./src/resolvers/contact_information_resolver');
+const gatewaySchema         = require('./src/gateway/schema');
+
+const { healthCheck }       = require('./src/utilities/health_check');
+const { retrieveTeamInfo }  = require('./src/services/team_service');
+
+const { schemaTeam, schemaContact, schemaProject } = require('./src/subgraphs/subSchemas');
 
 async function makeGatewaySchema() {
-  // These executors are simple functions used to delegate queries and mutations from the gateway graph to their respective subgraphs
-  const teamExec    = makeRemoteExecutor('http://localhost:8081/nintendo/team/graphql');
-  const contactExec = makeRemoteExecutor('http://localhost:8082/nintendo/contact/graphql');
-  const projectExec = makeRemoteExecutor('http://localhost:8083/nintendo/project/graphql');
 
-  // We are pulling in the schemas locally and using the executor to call the API to retrieve the requested data
-  const subSchemaTeam = { 
-    schema: teamSchema, 
-    executor: teamExec
-  }
-
-  // Here we are pulling the schema remotely using introspection and using the executor to call the API to retrieve the requested data
-  const subSchemaContact = { 
-    schema: await introspectSchema(contactExec), 
-    executor: contactExec
-  }
-
-  // Here we are pulling the schema remotely using introspection and using the executor to call the API to retrieve the requested data
-  const subSchemaProject = { 
-    schema: await introspectSchema(projectExec), 
-    executor: projectExec
-  }
+  const subSchemaTeam     = await schemaTeam();  
+  const subSchemaContact  = await schemaContact();
+  const subSchemaProject  = await schemaProject();
 
   // Under the hood, `stitchSchemas` is a wrapper for `makeExecutableSchema`,
   // and accepts all of its same options. This allows extra type definitions
@@ -47,57 +32,25 @@ async function makeGatewaySchema() {
     typeDefs: gatewaySchema,
     // Resolving our Gateway Schema
     resolvers: {
-      // Resolving the employeeData Query
       Query: {
+        // Resolving the employeeData Query
         employeeData(obj, args, context, info) {
           return retrieveTeamInfo(args.nintendoId);
+        }, 
+        healthCheck(obj, args, context, info) {
+          return "OK";
         }
       },
-      // Resolving the newEmployee Query
       Mutation: {
+        // Resolving the newEmployee Query
         newEmployee(obj, args, context, info) {
           return newEmployee(subSchemaContact, obj, args, context, info);
         }
       }, 
       // Resolving the NintendoEmployee object
-      NintendoEmployee: {
-        name: {
-          resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myName', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
-          }
-        },
-        teamInfo: {
-          resolve(nintendoEmployee, args, context, info) {
-            var teamInfo = nintendoEmployee.teamInfo
-            if(null == teamInfo) {
-              return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myPrimaryTeam', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
-            }
-            return teamInfo            
-          }
-        },
-        contactInformation: {
-          resolve(nintendoEmployee, args, context, info) {
-            return {nintendoId: nintendoEmployee.nintendoId}
-          }
-        },
-        teammates: {
-          resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myTeammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
-          }
-        },
-        projects : {
-          selectionSet: `{ teamId }`, 
-          resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaProject, operation: 'query', fieldName: 'projectsByCriteria', 
-              args: { 
-                teamId: nintendoEmployee.teamId,
-                franchiseId: args.franchiseId,
-                status: args.status
-              }, context, info});
-          }
-        }
-      }, 
+      NintendoEmployee: nintendoEmployee(subSchemaTeam, subSchemaProject), 
+        // Resolving the ContactInformation object
+      ContactInformation: contactInformation(subSchemaContact),
       // Resolving the Teammate object 
       Teammate: {
         details: {
@@ -117,64 +70,13 @@ async function makeGatewaySchema() {
             return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
           }
         }
-      },
-      // Resolving the ContactInformation object
-      ContactInformation: {
-        addresses: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info});
-          }
-        },
-        addressHistories: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaContact, operation: 'query', fieldName: 'addressHistories', 
-              args: { 
-                nintendoId: contactInformation.nintendoId, 
-                rows: args.first,
-                before: args.before
-              }, context, info});
-          }
-        },
-        phones: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info});
-          }
-        }, 
-        phoneHistories: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaContact, operation: 'query', fieldName: 'phoneHistories', 
-              args: { 
-                nintendoId: contactInformation.nintendoId, 
-                rows: args.first,
-                before: args.before
-              }, context, info});
-          }
-        }, 
-        emails: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info});
-          }
-        },
-        emailHistories: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaContact, operation: 'query', fieldName: 'emailHistories', 
-              args: { 
-                nintendoId: contactInformation.nintendoId, 
-                rows: args.first,
-                before: args.before
-              }, context, info});
-          }
-        }
       }
     }
   });
 }
 
 makeGatewaySchema().then(schema => {
-  const PORT = 8080;
+  const PORT = 8080; 
   const CONTEXT_PATH = "/nintendo/graphql";
   const app = express();
 
@@ -187,5 +89,15 @@ makeGatewaySchema().then(schema => {
   }));
 
   app.get('/nintendo/playground', expressPlayground({endpoint: CONTEXT_PATH}));
+
+  app.get('/health', (request, response, next)=> {
+    healthCheck().then((res) => { 
+      return response.json(res);
+    }).catch((err) => {
+      return response.status(500).send(err.healthStatus);
+    });
+    
+  });
+
   app.listen(PORT, () => console.log(`gateway running at http://localhost:${PORT}${CONTEXT_PATH}`));
 });
