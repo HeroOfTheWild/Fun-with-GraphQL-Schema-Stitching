@@ -6,13 +6,15 @@ const depthLimit            = require('graphql-depth-limit');
 const { stitchSchemas }     = require('@graphql-tools/stitch');
 const { delegateToSchema }  = require('@graphql-tools/delegate');
 
-const { healthCheck }       = require('./utilities/healthCheck');
-const { retrieveTeamInfo }  = require('./services/team_service');
+const newEmployee           = require('./src/resolvers/new_employee_resolver');
+const nintendoEmployee      = require('./src/resolvers/nintendo_employee_resolver');
+const contactInformation    = require('./src/resolvers/contact_information_resolver');
+const gatewaySchema         = require('./src/gateway/schema');
 
-const newEmployee           = require('./resolvers/new_employee_resolver');
-const gatewaySchema         = require('./gateway_schema');
+const { healthCheck }       = require('./src/utilities/health_check');
+const { retrieveTeamInfo }  = require('./src/services/team_service');
 
-const { schemaTeam, schemaContact, schemaProject } = require('./subgraphs/subSchemas');
+const { schemaTeam, schemaContact, schemaProject } = require('./src/subgraphs/subSchemas');
 
 async function makeGatewaySchema() {
 
@@ -30,8 +32,8 @@ async function makeGatewaySchema() {
     typeDefs: gatewaySchema,
     // Resolving our Gateway Schema
     resolvers: {
-      // Resolving the employeeData Query
       Query: {
+        // Resolving the employeeData Query
         employeeData(obj, args, context, info) {
           return retrieveTeamInfo(args.nintendoId);
         }, 
@@ -39,51 +41,16 @@ async function makeGatewaySchema() {
           return "OK";
         }
       },
-      // Resolving the newEmployee Query
       Mutation: {
+        // Resolving the newEmployee Query
         newEmployee(obj, args, context, info) {
           return newEmployee(subSchemaContact, obj, args, context, info);
         }
       }, 
       // Resolving the NintendoEmployee object
-      NintendoEmployee: {
-        name: {
-          resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myName', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
-          }
-        },
-        teamInfo: {
-          resolve(nintendoEmployee, args, context, info) {    
-            var teamInfo = nintendoEmployee.teamInfo
-            if(null == teamInfo) {
-              return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myPrimaryTeam', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
-            }
-            return teamInfo            
-          }
-        },
-        contactInformation: {
-          resolve(nintendoEmployee, args, context, info) {
-            return {nintendoId: nintendoEmployee.nintendoId}
-          }
-        },
-        teammates: {
-          resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myTeammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
-          }
-        },
-        projects : {
-          selectionSet: `{ teamId }`, 
-          resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaProject, operation: 'query', fieldName: 'projectsByCriteria', 
-              args: { 
-                teamId: nintendoEmployee.teamId,
-                franchiseId: args.franchiseId,
-                status: args.status
-              }, context, info});
-          }
-        }
-      }, 
+      NintendoEmployee: nintendoEmployee(subSchemaTeam, subSchemaProject), 
+        // Resolving the ContactInformation object
+      ContactInformation: contactInformation(subSchemaContact),
       // Resolving the Teammate object 
       Teammate: {
         details: {
@@ -101,57 +68,6 @@ async function makeGatewaySchema() {
           selectionSet: `{ franchiseId }`, 
           resolve(project, args, context, info) {
             return delegateToSchema({schema: subSchemaProject, operation: 'query', fieldName: 'franchise', args: { franchiseId: project.franchiseId }, context, info});
-          }
-        }
-      },
-      // Resolving the ContactInformation object
-      ContactInformation: {
-        addresses: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info});
-          }
-        },
-        addressHistories: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaContact, operation: 'query', fieldName: 'addressHistories', 
-              args: { 
-                nintendoId: contactInformation.nintendoId, 
-                rows: args.first,
-                before: args.before
-              }, context, info});
-          }
-        },
-        phones: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info});
-          }
-        }, 
-        phoneHistories: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaContact, operation: 'query', fieldName: 'phoneHistories', 
-              args: { 
-                nintendoId: contactInformation.nintendoId, 
-                rows: args.first,
-                before: args.before
-              }, context, info});
-          }
-        }, 
-        emails: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info});
-          }
-        },
-        emailHistories: {
-          resolve(contactInformation, args, context, info) {
-            return delegateToSchema({
-              schema: subSchemaContact, operation: 'query', fieldName: 'emailHistories', 
-              args: { 
-                nintendoId: contactInformation.nintendoId, 
-                rows: args.first,
-                before: args.before
-              }, context, info});
           }
         }
       }

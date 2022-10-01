@@ -1,9 +1,9 @@
 const { introspectSchema } = require('@graphql-tools/wrap');
 
 // The executor is a simple functions used to delegate queries and mutations from the gateway graph to their respective subgraphs
-const makeRemoteExecutor = require('../services/make_remote_executor');
+const makeRemoteExecutor = require('../executors/make_remote_executor');
 
-const teamSchema            = require('../subgraphs/team/schema');
+const teamSchema         = require('./team/schema');
 
 // We are pulling in the schemas locally and using the executor to call the API to retrieve the requested data
 const schemaTeam = async() => {

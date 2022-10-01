@@ -1,6 +1,6 @@
 const { fetch }         = require('cross-fetch');
 const { GraphQLError}   = require('graphql');
-const HealthCheckError  = require('../services/errors/health_check_error');
+const HealthCheckError  = require('../errors/health_check_error');
 
 const healthCheckUri = "http://localhost:8080/nintendo/graphql?query={healthCheck}";
 

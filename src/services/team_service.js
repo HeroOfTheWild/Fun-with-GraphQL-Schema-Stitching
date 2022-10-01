@@ -1,7 +1,7 @@
 const { fetch } = require('cross-fetch');
 const { GraphQLError, print } = require('graphql');
-const NotFound = require('./errors/not_found');
-const IssueEmployeeError = require('./errors/issue_employee_error');
+const NotFound = require('../errors/not_found_error');
+const IssueEmployeeError = require('../errors/issue_employee_error');
 
 const myTeamInfoQuery = `
     query primary($nintendoId: NintendoId!) {
