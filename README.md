@@ -53,37 +53,38 @@ query allData($nintendoId: NintendoId!,
   $includeContact: Boolean!, $includeAddress: Boolean!, $includePhone: Boolean!, $includeEmail: Boolean!){
   employeeData(nintendoId: $nintendoId) {
     nintendoId
-    name @include(if: $includeName) {
-      ...fullName
-    }
-    teamInfo {
-      teamName
-    }
-    teammates @include(if: $includeTeam) {
-      teamId
-      nintendoId
-      details {
-        name {
-          ...fullName
-        }
-        ...contact
-      }
-    }
-    projects @include(if: $includeProjects) {
-      projectName
-      status
-      franchise {
-        title
-      }
-    }
+    teamId
+    ...fullName
+    ...project
     ...contact
+    ...teamInfo
+    ...teammates
   }
 }
 
-fragment fullName on Name {
-  firstName
-  middleName
-  lastName
+fragment teamInfo on NintendoEmployee {
+  teamInfo {
+    teamId
+    teamName
+  }
+}
+
+fragment fullName on NintendoEmployee {
+  name @include(if: $includeName){
+    firstName
+    middleName
+    lastName
+  }
+}
+
+fragment project on NintendoEmployee {
+  projects @include(if: $includeProjects) {
+    projectName
+    status
+    franchise {
+      title
+    }
+  }
 }
 
 fragment contact on NintendoEmployee {
@@ -104,6 +105,17 @@ fragment contact on NintendoEmployee {
       postalCode
     }
   }
+}
+
+fragment teammates on NintendoEmployee {
+    teammates @include(if: $includeTeam) {
+      teamId
+      nintendoId
+      details {
+        ...fullName
+        ...contact
+      }
+    }
 }
 ```
 

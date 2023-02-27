@@ -4,7 +4,10 @@ module.exports = function contactInformation(subSchemaContact) {
     return {
         addresses: {
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'addresses', args: { nintendoId: contactInformation.nintendoId }, context, info});
+            return delegateToSchema({
+              schema: subSchemaContact, operation: 'query', fieldName: 'addresses', 
+              args: { nintendoId: contactInformation.nintendoId }, 
+              context, info});
           }
         },
         addressHistories: {
@@ -20,7 +23,10 @@ module.exports = function contactInformation(subSchemaContact) {
         },
         phones: {
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'phones', args: { nintendoId: contactInformation.nintendoId }, context, info});
+            return delegateToSchema({
+              schema: subSchemaContact, operation: 'query', fieldName: 'phones', 
+              args: { nintendoId: contactInformation.nintendoId }, 
+              context, info});
           }
         }, 
         phoneHistories: {
@@ -36,7 +42,10 @@ module.exports = function contactInformation(subSchemaContact) {
         }, 
         emails: {
           resolve(contactInformation, args, context, info) {
-            return delegateToSchema({schema: subSchemaContact, operation: 'query', fieldName: 'emails', args: { nintendoId: contactInformation.nintendoId }, context, info});
+            return delegateToSchema({
+              schema: subSchemaContact, operation: 'query', fieldName: 'emails', 
+              args: { nintendoId: contactInformation.nintendoId }, 
+              context, info});
           }
         },
         emailHistories: {

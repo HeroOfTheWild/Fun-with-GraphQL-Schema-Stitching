@@ -4,14 +4,20 @@ module.exports = function nintendoEmployee(subSchemaTeam, subSchemaProject) {
     return {
         name: {
           resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myName', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+            return delegateToSchema({
+              schema: subSchemaTeam, operation: 'query', fieldName: 'myName', 
+              args: { nintendoId: nintendoEmployee.nintendoId }, 
+              context, info})
           }
         },
         teamInfo: {
           resolve(nintendoEmployee, args, context, info) {    
             var teamInfo = nintendoEmployee.teamInfo
             if(null == teamInfo) {
-              return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myPrimaryTeam', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+              return delegateToSchema({
+                schema: subSchemaTeam, operation: 'query', fieldName: 'myPrimaryTeam', 
+                args: { nintendoId: nintendoEmployee.nintendoId }, 
+                context, info})
             }
             return teamInfo            
           }
@@ -23,7 +29,10 @@ module.exports = function nintendoEmployee(subSchemaTeam, subSchemaProject) {
         },
         teammates: {
           resolve(nintendoEmployee, args, context, info) {
-            return delegateToSchema({schema: subSchemaTeam, operation: 'query', fieldName: 'myTeammates', args: { nintendoId: nintendoEmployee.nintendoId }, context, info})
+            return delegateToSchema({
+              schema: subSchemaTeam, operation: 'query', fieldName: 'myTeammates', 
+              args: { nintendoId: nintendoEmployee.nintendoId }, 
+              context, info})
           }
         },
         projects : {
